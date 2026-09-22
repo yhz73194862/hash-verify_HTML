@@ -24,9 +24,10 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const candidates = [
   process.argv[2],
+  path.join(here, 'index.html'),
+  path.join(here, 'hash-verify.html'),
   path.join(here, '..', 'index.html'),
-  path.join(here, '..', 'hash-verify.html'),
-  path.join(here, 'hash-verify.html')
+  path.join(here, '..', 'hash-verify.html')
 ].filter(Boolean);
 const htmlPath = candidates.find((p) => fs.existsSync(p));
 if (!htmlPath){
