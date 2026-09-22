@@ -1,13 +1,14 @@
-[README.md](https://github.com/user-attachments/files/32502438/README.md)
 # hash-verify · 多算法哈希校验工具
 
 > 一个**单文件、零依赖、可离线**的浏览器端文件哈希校验器：拖入文件 + 拖入 `SHA256SUMS` 之类的校验清单，立刻告诉你文件是否被篡改或下载损坏。文件**不会上传**，页面**不发任何网络请求**。
 
 ![完全本地](https://img.shields.io/badge/100%25-本地运行-success)
 ![零依赖](https://img.shields.io/badge/dependencies-0-brightgreen)
-![单文件](https://img.shields.io/badge/single--file-59%20KB-blue)
+![单文件](https://img.shields.io/badge/single--file-61.7%20KB-blue)
 ![离线可用](https://img.shields.io/badge/works-offline-informational)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+**在线使用（免下载）：** <https://yhz73194862.github.io/hash-verify_HTML/>
 
 ---
 
@@ -46,10 +47,10 @@
 
 ### 方式二：在线使用（GitHub Pages）
 
-仓库根目录的入口文件名为 `index.html`（即应用本体），因此开启 `Settings → Pages → Deploy from a branch → main / (root)` 后即可直接访问：
+仓库根目录的入口文件名为 `index.html`（即应用本体），开启 `Settings → Pages → Deploy from a branch → main / (root)` 后即可直接访问：
 
 ```
-https://<你的用户名>.github.io/hash-verify/
+https://yhz73194862.github.io/hash-verify_HTML/
 ```
 
 > 页面本身不发网络请求，所有计算都在你的浏览器里完成；在线版和本地版行为完全一致。
@@ -59,7 +60,7 @@ https://<你的用户名>.github.io/hash-verify/
 ```bash
 # 其实非必需，file:// 直接打开也可以
 python -m http.server 8080
-# 然后访问 http://localhost:8080/hash-verify.html
+# 然后访问 http://localhost:8080/index.html
 ```
 
 ## 使用步骤
@@ -170,27 +171,30 @@ node test/kat.mjs      # 需要 Node.js ≥ 20（用到 zlib.crc32）
 
 当前状态：**1687 项断言全部通过**。开发过程中正是靠多块对拍抓出了 BLAKE2b 计数器更新时机错误（≥129 字节结果全错），详见提交记录。
 
+> Windows 上如果没有 Node.js，也可以用本工具自身核对：把 `index.html` 与 `SHA256SUMS` 一起拖进页面即可。
+
 ## 项目结构
 
 ```text
 .
 ├── index.html         # 全部功能：UI + 样式 + 哈希引擎 + 清单解析（单文件，无构建）
-│                      # 也命名为 hash-verify.html：test/kat.mjs 两种名字都能自动识别
 ├── test/
-│   └── kat.mjs        # 已知答案测试与交叉对拍脚本（Node.js）
+│   └── kat.mjs        # 已知答案测试与交叉对拍脚本（Node.js；也支持 hash-verify.html 这个名字）
+├── SHA256SUMS         # 仓库文件自校验清单：sha256sum -c SHA256SUMS
 ├── README.md
-└── LICENSE
+└── LICENSE            # MIT
 ```
 
 ## 发布建议（仓库维护者）
 
-把应用同时作为 **Release 资产**发布，并顺手用它校验自己，形成闭环：
+把应用作为 **Release 资产**发布，并顺手用它校验自己，形成闭环：
 
 ```bash
-# 1) 生成自校验清单（或直接用本工具界面导出 SHA256SUMS）
-sha256sum index.html > SHA256SUMS
-# 2) 把 index.html（或 hash-verify.html）与 SHA256SUMS 一起上传为 Release 资产
-# 3) 使用者先下载两者，再用任一哈希工具（包括本工具自身）核对
+# 1) 生成清单（或直接用本工具界面导出 SHA256SUMS）
+sha256sum index.html > SHA256SUMS        # 仓库自校验用，条目名与仓库文件名一致
+# 2) 作为 Release 资产时，把 index.html 以 hash-verify.html 为名上传
+#    （附件名与清单条目名一致，使用者才能直接 sha256sum -c 核对）
+# 3) 使用者下载附件与 SHA256SUMS 放在同一目录后核对
 ```
 
 ## 贡献
@@ -217,7 +221,7 @@ sha256sum index.html > SHA256SUMS
 - **Manifest formats**: GNU `sha256sum`, BSD/OpenSSL `SHA256 (file) = hash`, Windows `certutil` output, `hash *file`, bare hashes, comments; the algorithm is inferred from the hash length, so mixed manifests work
 - **Encodings**: UTF-8 / GBK / Big5 / Shift-JIS / UTF-16LE
 - **Fast & memory-safe**: native WebCrypto for ≤512 MB, built-in streaming JS engine beyond that
-- **Usage**: download `hash-verify.html` and open it, or enable GitHub Pages
+- **Usage**: download `hash-verify.html` from [Releases](../../releases), or open <https://yhz73194862.github.io/hash-verify_HTML/>
 - **Verification**: `node test/kat.mjs` — 1687 assertions cross-checked against Node's `crypto`, `zlib.crc32`, and OS-provided `certutil` (as an independent SHA-3 reference)
 
 > MD5 and SHA-1 are cryptographically broken; use them only for download-integrity checks. A matching hash proves the file matches the manifest — it does **not** prove the manifest itself is trustworthy.
