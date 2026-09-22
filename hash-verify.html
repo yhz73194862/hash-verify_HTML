@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>哈希校验工具 · MD5 / SHA-1 / SHA-256 / SHA-512 / SHA3 / BLAKE2b / CRC32</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --fg:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+    --brand:#2563eb; --brand-soft:#eff4ff; --ok:#059669; --ok-soft:#e7f7f1;
+    --bad:#dc2626; --bad-soft:#fdeceb; --warn:#b45309; --warn-soft:#fdf3e5;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1626; --card:#131e33; --fg:#e6eaf2; --muted:#94a3b8; --line:#26344f;
+      --brand:#5b8cff; --brand-soft:#1b2a4a; --ok:#31c48d; --ok-soft:#122f27;
+      --bad:#f16b6b; --bad-soft:#33191b; --warn:#e0a44a; --warn-soft:#33260f;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;padding:28px 16px 60px}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  header h1{margin:0 0 6px;font-size:23px;letter-spacing:.2px}
+  header p{margin:0;color:var(--muted);font-size:13.5px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .card h2{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card h2 .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--brand-soft);color:var(--brand);font-size:12.5px;font-weight:700}
+  .drop{border:1.5px dashed var(--line);border-radius:12px;padding:20px 16px;text-align:center;color:var(--muted);cursor:pointer;transition:.15s;background:transparent}
+  .drop:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+  .drop.over{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+  .drop strong{color:var(--fg);font-weight:600}
+  .drop .ico{font-size:26px;display:block;margin-bottom:6px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+  .toolbar .spacer{flex:1}
+  .btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;padding:7px 13px;font-size:13.5px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--brand);color:var(--brand)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{filter:brightness(1.07);color:#fff}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.mini{padding:3px 8px;font-size:12px;border-radius:7px}
+  select,input[type=text]{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;padding:6px 9px;font-size:13.5px}
+  label.chk{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted);cursor:pointer;user-select:none}
+  textarea{width:100%;min-height:112px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--fg);padding:10px 12px;font-family:var(--mono);font-size:12.5px;resize:vertical}
+  textarea:focus,select:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+  .algos{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:4px 11px;font-size:13px;cursor:pointer;user-select:none;transition:.15s;color:var(--muted)}
+  .pill:hover{border-color:var(--brand);color:var(--brand)}
+  .pill.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand);font-weight:600}
+  .pill input{margin:0;accent-color:var(--brand)}
+  .filelist{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .filelist li{border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .frow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .fname{font-weight:600;font-size:13.8px;word-break:break-all;flex:1;min-width:180px}
+  .fsize{color:var(--muted);font-size:12.5px;white-space:nowrap}
+  .bar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:7px}
+  .bar > i{display:block;height:100%;width:0;background:var(--brand);transition:width .12s linear}
+  .hash{font-family:var(--mono);font-size:12.3px;word-break:break-all}
+  .algline{display:flex;gap:8px;align-items:flex-start;padding:2px 0;flex-wrap:wrap}
+  .algtag{display:inline-block;min-width:82px;font-size:11.5px;font-weight:700;color:var(--brand);background:var(--brand-soft);border-radius:6px;padding:1px 6px;text-align:center;white-space:nowrap}
+  .muted{color:var(--muted)}
+  .small{font-size:12.5px}
+  .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12.2px;white-space:nowrap;font-weight:600}
+  .badge.ok{background:var(--ok-soft);color:var(--ok)}
+  .badge.bad{background:var(--bad-soft);color:var(--bad)}
+  .badge.unknown{background:var(--brand-soft);color:var(--brand)}
+  .badge.warn{background:var(--warn-soft);color:var(--warn)}
+  .badge.pending{background:var(--line);color:var(--muted)}
+  .mark{font-weight:700}
+  .mark.ok{color:var(--ok)}
+  .mark.bad{color:var(--bad)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .chip{border:1px solid var(--line);border-radius:99px;padding:4px 12px;font-size:13px}
+  .chip b{font-size:14px}
+  .chip.ok{border-color:var(--ok);color:var(--ok)}
+  .chip.bad{border-color:var(--bad);color:var(--bad)}
+  .chip.warn{border-color:var(--warn);color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-size:12.3px;font-weight:600;white-space:nowrap}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:#111827;color:#fff;padding:9px 16px;border-radius:10px;font-size:13.5px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
+  .toast.show{opacity:.94;transform:translateX(-50%) translateY(0)}
+  details.tips{margin-top:14px}
+  details.tips summary{cursor:pointer;color:var(--muted);font-size:13px}
+  details.tips ul{margin:8px 0 0;padding-left:20px;color:var(--muted);font-size:13px}
+  details.tips li{margin:3px 0}
+  code{font-family:var(--mono);background:var(--brand-soft);color:var(--brand);padding:1px 5px;border-radius:5px;font-size:12.4px}
+  .hide{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>哈希校验工具（多算法）</h1>
+    <p>在浏览器本地计算文件哈希，并与校验清单（<code>SHA256SUMS</code> / <code>MD5SUMS</code> / <code>SHA512SUMS</code> 等）比对。文件不会上传，可断网使用。</p>
+  </header>
+
+  <section class="card">
+    <h2><span class="num">1</span>选择文件与哈希算法</h2>
+    <div class="drop" id="targetDrop">
+      <span class="ico">📦</span>
+      <strong>把文件拖到这里</strong>，或点击此处选择文件（可多选）
+      <div class="small muted" style="margin-top:6px">例如 <code>DeepSeek-Harness-windows-x64.exe</code>（支持 GB 级大文件，自动分块读取）</div>
+    </div>
+    <input type="file" id="targetInput" multiple class="hide">
+
+    <div class="algos">
+      <span class="small muted">哈希算法（可多选，同一遍读取里一次算完）：</span>
+      <div id="algoBox" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <button class="btn mini" id="algoCommon">常用</button>
+      <button class="btn mini" id="algoAll">全选</button>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn" id="pickTarget">选择文件…</button>
+      <button class="btn primary" id="runBtn" disabled>开始 / 重新计算</button>
+      <button class="btn" id="clearTarget" disabled>清空文件</button>
+      <span class="spacer"></span>
+      <label class="small muted" for="modeSel">计算方式</label>
+      <select id="modeSel">
+        <option value="auto">自动（推荐）</option>
+        <option value="native">原生 crypto（最快）</option>
+        <option value="stream">流式分块（超大文件）</option>
+      </select>
+    </div>
+    <ul class="filelist" id="targetList"></ul>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">2</span>载入校验清单（可选）</h2>
+    <div class="drop" id="sumsDrop">
+      <span class="ico">📄</span>
+      <strong>把校验清单拖到这里</strong>（SHA256SUMS / MD5SUMS / SHA512SUMS / *.txt …）
+      <div class="small muted" style="margin-top:6px">也可以直接把清单内容粘贴到下面的文本框；算法按哈希长度自动识别</div>
+    </div>
+    <input type="file" id="sumsInput" class="hide">
+    <div class="toolbar">
+      <button class="btn" id="pickSums">选择校验清单…</button>
+      <button class="btn" id="clearSums" disabled>清空清单</button>
+      <span class="spacer"></span>
+      <label class="small muted" for="encSel">清单编码</label>
+      <select id="encSel">
+        <option value="utf-8">UTF-8</option>
+        <option value="gbk">GBK / GB18030</option>
+        <option value="big5">Big5</option>
+        <option value="shift_jis">Shift-JIS</option>
+        <option value="utf-16le">UTF-16LE</option>
+        <option value="windows-1252">Latin-1</option>
+      </select>
+    </div>
+    <div style="margin-top:12px">
+      <textarea id="sumsText" spellcheck="false" placeholder="# 支持多种算法混在一份清单里（哈希长度自动识别）
+d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592  DeepSeek-Harness-windows-x64.exe
+9e107d9d372bb6826bd81d3542a419d6  DeepSeek-Harness-windows-x64.exe
+a9993e364706816aba3e25717850c26c9cd0d89d *other-file.zip
+SHA512 (third.bin) = 8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909"></textarea>
+    </div>
+    <div class="small muted" id="sumsStatus" style="margin-top:8px">尚未载入校验清单 —— 此时只计算并显示哈希值。</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">3</span>校验结果</h2>
+    <div class="chips" id="chips"><span class="chip muted">等待计算…</span></div>
+    <div class="toolbar" style="margin:0 0 10px">
+      <label class="chk"><input type="checkbox" id="onlyBad"> 只看异常项</label>
+      <span class="spacer"></span>
+      <label class="small muted" for="exportAlgo">导出算法</label>
+      <select id="exportAlgo"></select>
+      <button class="btn mini" id="copyAll" disabled>复制校验和</button>
+      <button class="btn mini" id="dlSums" disabled>下载校验清单</button>
+      <button class="btn mini" id="dlReport" disabled>下载报告 .txt</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="resultTable">
+        <thead>
+          <tr><th style="width:24%">文件</th><th style="width:34%">计算值</th><th>清单中的值</th><th style="white-space:nowrap">状态</th></tr>
+        </thead>
+        <tbody id="resultBody">
+          <tr><td colspan="4" class="muted small">添加文件后自动开始计算。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="small muted" id="unmatched" style="margin-top:10px"></div>
+  </section>
+
+  <details class="tips">
+    <summary>使用说明 / 常见问题</summary>
+    <ul>
+      <li><b>完全本地运行：</b>页面不发起任何网络请求，文件内容不会离开你的电脑。</li>
+      <li><b>支持的算法：</b>MD5、SHA-1、SHA-224、SHA-256、SHA-384、SHA-512、SHA3-256、BLAKE2b-512、CRC32。可多选，同一遍文件读取中一次算完。</li>
+      <li><b>清单格式：</b>GNU 的 <code>哈希␣␣文件名</code>、二进制标记 <code>哈希 *文件名</code>、BSD/OpenSSL 的 <code>SHA256 (文件名) = 哈希值</code>、<code>certutil</code> 的「XXX hash of file …」输出都支持；<code>#</code> 开头的行视为注释。</li>
+      <li><b>算法识别：</b>清单里写了算法名（BSD/certutil 格式）就按名称匹配；只写哈希值时按<i>长度</i>识别——8 位=CRC32，32 位=MD5，40 位=SHA-1，56 位=SHA-224，64 位=SHA-256 或 SHA3-256，96 位=SHA-384，128 位=SHA-512 或 BLAKE2b-512。同长度的两种算法无法区分时会按长度匹配（任意一种对上即通过）。</li>
+      <li><b>匹配规则：</b>先按“相对路径”比对，再按“文件名”比对（Windows 下不区分大小写）；哈希值大小写不敏感。</li>
+      <li><b>只粘贴了一个哈希值？</b>会被当作通用期望值，与加入的文件逐一比对，方便做单文件校验。</li>
+      <li><b>性能：</b>SHA-1/256/384/512 在 ≤512&nbsp;MB 时走浏览器原生 <code>crypto</code>（最快）；MD5、SHA3、BLAKE2b、CRC32 没有原生实现，用内置纯 JS 引擎；更大或强制流式时所有算法都用 JS 分块计算。SHA-512/BLAKE2b/SHA3 的 JS 实现较慢（纯 JS 大整数运算），GB 级文件请留出时间。</li>
+      <li><b>提示：</b>校验通过只能说明文件与清单一致；请确认校验清单本身来自官方可信渠道（HTTPS 官网、签名邮件等）。MD5/SHA-1 已不具备抗碰撞能力，仅用于校验下载完整性，不应用于安全场景。</li>
+    </ul>
+  </details>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== HASH CORE START ===== */
+/* 纯 JS 增量式哈希引擎：MD5 / SHA-1 / SHA-224 / SHA-256 / SHA-384 / SHA-512 /
+   SHA3-256 / BLAKE2b-512 / CRC32，并带校验清单解析器。 */
+
+const HEX_BYTE = (function(){ const a = new Array(256); for (let i = 0; i < 256; i++) a[i] = (i < 16 ? '0' : '') + i.toString(16); return a; })();
+const MASK64 = (1n << 64n) - 1n;
+function rotr32(x, n){ return (x >>> n) | (x << (32 - n)); }
+function rotl32(x, n){ return ((x << n) | (x >>> (32 - n))) >>> 0; }
+function rotr64(x, n){ return ((x >> n) | (x << (64n - n))) & MASK64; }
+function rotl64(x, n){ return ((x << n) | (x >> (64n - n))) & MASK64; }
+function bigFromHex(s){ return BigInt('0x' + s); }
+
+/* --- 通用分块缓冲基类（Merkle–Damgård 类算法共用） --- */
+class Chunked {
+  constructor(blockSize){
+    this.blockSize = blockSize;
+    this.buf = new Uint8Array(blockSize);
+    this.bufLen = 0;
+    this.len = 0;
+  }
+  update(data){
+    if (!(data instanceof Uint8Array)) data = new Uint8Array(data);
+    this.len += data.length;
+    let off = 0;
+    if (this.bufLen > 0){
+      const take = Math.min(this.blockSize - this.bufLen, data.length);
+      this.buf.set(data.subarray(0, take), this.bufLen);
+      this.bufLen += take;
+      off = take;
+      if (this.bufLen === this.blockSize){ this._block(); this.bufLen = 0; }
+    }
+    while (off + this.blockSize <= data.length){
+      this.buf.set(data.subarray(off, off + this.blockSize), 0);
+      this._block();
+      off += this.blockSize;
+    }
+    if (off < data.length){
+      this.buf.set(data.subarray(off), 0);
+      this.bufLen = data.length - off;
+    }
+    return this;
+  }
+}
+/* 标准 MD 填充：0x80 + 若干 0 + 长度（bit）。lenBytes: 8 或 16；little 仅 MD5 用 */
+function mdPad(h, lenBytes, little){
+  const threshold = h.blockSize - lenBytes;
+  const padLen = (h.bufLen < threshold ? threshold : threshold + h.blockSize) - h.bufLen;
+  const pad = new Uint8Array(padLen + lenBytes);
+  pad[0] = 0x80;
+  const bits = h.len * 8;
+  const hi = Math.floor(bits / 4294967296);
+  const lo = bits % 4294967296;
+  const dv = new DataView(pad.buffer);
+  const o = padLen;
+  if (little){
+    dv.setUint32(o, lo >>> 0, true);
+    dv.setUint32(o + 4, hi >>> 0, true);
+  } else if (lenBytes === 8){
+    dv.setUint32(o, hi >>> 0, false);
+    dv.setUint32(o + 4, lo >>> 0, false);
+  } else {
+    dv.setUint32(o + 8, hi >>> 0, false);
+    dv.setUint32(o + 12, lo >>> 0, false);
+  }
+  h.update(pad);
+}
+function wordsToHexBE(h, n){
+  let s = '';
+  for (let i = 0; i < n; i++){
+    const v = h[i];
+    s += HEX_BYTE[(v >>> 24) & 255] + HEX_BYTE[(v >>> 16) & 255] + HEX_BYTE[(v >>> 8) & 255] + HEX_BYTE[v & 255];
+  }
+  return s;
+}
+function bytesToHex(bytes){
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += HEX_BYTE[bytes[i]];
+  return s;
+}
+function bigToHex64(v, mask){
+  let s = '';
+  for (let k = 7; k >= 0; k--) s += HEX_BYTE[Number((v >> BigInt(k * 8)) & 0xffn)];
+  return mask ? s.slice(mask) : s;
+}
+
+/* --- MD5 (RFC 1321) --- */
+const MD5_K = new Uint32Array([
+  0xd76aa478,0xe8c7b756,0x242070db,0xc1bdceee,0xf57c0faf,0x4787c62a,0xa8304613,0xfd469501,
+  0x698098d8,0x8b44f7af,0xffff5bb1,0x895cd7be,0x6b901122,0xfd987193,0xa679438e,0x49b40821,
+  0xf61e2562,0xc040b340,0x265e5a51,0xe9b6c7aa,0xd62f105d,0x02441453,0xd8a1e681,0xe7d3fbc8,
+  0x21e1cde6,0xc33707d6,0xf4d50d87,0x455a14ed,0xa9e3e905,0xfcefa3f8,0x676f02d9,0x8d2a4c8a,
+  0xfffa3942,0x8771f681,0x6d9d6122,0xfde5380c,0xa4beea44,0x4bdecfa9,0xf6bb4b60,0xbebfbc70,
+  0x289b7ec6,0xeaa127fa,0xd4ef3085,0x04881d05,0xd9d4d039,0xe6db99e5,0x1fa27cf8,0xc4ac5665,
+  0xf4292244,0x432aff97,0xab9423a7,0xfc93a039,0x655b59c3,0x8f0ccc92,0xffeff47d,0x85845dd1,
+  0x6fa87e4f,0xfe2ce6e0,0xa3014314,0x4e0811a1,0xf7537e82,0xbd3af235,0x2ad7d2bb,0xeb86d391
+]);
+const MD5_S = [
+  7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,
+  5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
+  4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,
+  6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21
+];
+class Md5 extends Chunked {
+  constructor(){
+    super(64);
+    this.h = new Uint32Array([0x67452301,0xefcdab89,0x98badcfe,0x10325476]);
+    this.w = new Uint32Array(16);
+  }
+  _block(){
+    const w = this.w, b = this.buf;
+    for (let i = 0; i < 16; i++){
+      const j = i << 2;
+      w[i] = (b[j] | (b[j + 1] << 8) | (b[j + 2] << 16) | (b[j + 3] << 24)) >>> 0;
+    }
+    let a = this.h[0], bb = this.h[1], c = this.h[2], d = this.h[3];
+    for (let i = 0; i < 64; i++){
+      let f, g;
+      if (i < 16){ f = (bb & c) | (~bb & d); g = i; }
+      else if (i < 32){ f = (d & bb) | (~d & c); g = (5 * i + 1) & 15; }
+      else if (i < 48){ f = bb ^ c ^ d; g = (3 * i + 5) & 15; }
+      else { f = c ^ (bb | ~d); g = (7 * i) & 15; }
+      f = (f + a + MD5_K[i] + w[g]) >>> 0;
+      a = d; d = c;
+      c = bb;
+      bb = (bb + rotl32(f, MD5_S[i])) >>> 0;
+    }
+    this.h[0] = (this.h[0] + a) >>> 0;
+    this.h[1] = (this.h[1] + bb) >>> 0;
+    this.h[2] = (this.h[2] + c) >>> 0;
+    this.h[3] = (this.h[3] + d) >>> 0;
+  }
+  digestHex(){
+    mdPad(this, 8, true);
+    let s = '';
+    for (let i = 0; i < 4; i++){
+      const v = this.h[i];
+      s += HEX_BYTE[v & 255] + HEX_BYTE[(v >>> 8) & 255] + HEX_BYTE[(v >>> 16) & 255] + HEX_BYTE[(v >>> 24) & 255];
+    }
+    return s;
+  }
+}
+
+/* --- SHA-1 --- */
+class Sha1 extends Chunked {
+  constructor(){
+    super(64);
+    this.h = new Uint32Array([0x67452301,0xefcdab89,0x98badcfe,0x10325476,0xc3d2e1f0]);
+    this.w = new Uint32Array(80);
+  }
+  _block(){
+    const w = this.w, b = this.buf;
+    for (let i = 0; i < 16; i++){
+      const j = i << 2;
+      w[i] = ((b[j] << 24) | (b[j + 1] << 16) | (b[j + 2] << 8) | b[j + 3]) >>> 0;
+    }
+    for (let i = 16; i < 80; i++) w[i] = rotl32(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
+    let a = this.h[0], bb = this.h[1], c = this.h[2], d = this.h[3], e = this.h[4];
+    for (let i = 0; i < 80; i++){
+      let f, k;
+      if (i < 20){ f = (bb & c) | (~bb & d); k = 0x5a827999; }
+      else if (i < 40){ f = bb ^ c ^ d; k = 0x6ed9eba1; }
+      else if (i < 60){ f = (bb & c) | (bb & d) | (c & d); k = 0x8f1bbcdc; }
+      else { f = bb ^ c ^ d; k = 0xca62c1d6; }
+      const t = (rotl32(a, 5) + f + e + k + w[i]) >>> 0;
+      e = d; d = c; c = rotl32(bb, 30); bb = a; a = t;
+    }
+    this.h[0] = (this.h[0] + a) >>> 0;
+    this.h[1] = (this.h[1] + bb) >>> 0;
+    this.h[2] = (this.h[2] + c) >>> 0;
+    this.h[3] = (this.h[3] + d) >>> 0;
+    this.h[4] = (this.h[4] + e) >>> 0;
+  }
+  digestHex(){ mdPad(this, 8, false); return wordsToHexBE(this.h, 5); }
+}
+
+/* --- SHA-224 / SHA-256 --- */
+const SHA256_K = new Uint32Array([
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+]);
+const SHA256_IV = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+const SHA224_IV = [0xc1059ed8,0x367cd507,0x3070dd17,0xf70e5939,0xffc00b31,0x68581511,0x64f98fa7,0xbefa4fa4];
+class Sha256Core extends Chunked {
+  constructor(iv, outWords){
+    super(64);
+    this.h = new Uint32Array(iv);
+    this.outWords = outWords;
+    this.w = new Uint32Array(64);
+  }
+  _block(){
+    const w = this.w, b = this.buf, K = SHA256_K;
+    for (let i = 0; i < 16; i++){
+      const j = i << 2;
+      w[i] = ((b[j] << 24) | (b[j + 1] << 16) | (b[j + 2] << 8) | b[j + 3]) >>> 0;
+    }
+    for (let i = 16; i < 64; i++){
+      const x = w[i - 15], y = w[i - 2];
+      const s0 = (rotr32(x, 7) ^ rotr32(x, 18) ^ (x >>> 3)) >>> 0;
+      const s1 = (rotr32(y, 17) ^ rotr32(y, 19) ^ (y >>> 10)) >>> 0;
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+    const h = this.h;
+    let a = h[0], bb = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+    for (let i = 0; i < 64; i++){
+      const S1 = (rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)) >>> 0;
+      const ch = ((e & f) ^ (~e & g)) >>> 0;
+      const t1 = (hh + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = (rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)) >>> 0;
+      const maj = ((a & bb) ^ (a & c) ^ (bb & c)) >>> 0;
+      const t2 = (S0 + maj) >>> 0;
+      hh = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = bb; bb = a; a = (t1 + t2) >>> 0;
+    }
+    h[0] = (h[0] + a) >>> 0; h[1] = (h[1] + bb) >>> 0;
+    h[2] = (h[2] + c) >>> 0; h[3] = (h[3] + d) >>> 0;
+    h[4] = (h[4] + e) >>> 0; h[5] = (h[5] + f) >>> 0;
+    h[6] = (h[6] + g) >>> 0; h[7] = (h[7] + hh) >>> 0;
+  }
+  digestHex(){ mdPad(this, 8, false); return wordsToHexBE(this.h, this.outWords); }
+}
+class Sha256 extends Sha256Core { constructor(){ super(SHA256_IV, 8); } }
+class Sha224 extends Sha256Core { constructor(){ super(SHA224_IV, 7); } }
+
+/* --- SHA-384 / SHA-512（64 位用 BigInt） --- */
+const SHA512_K = ('428a2f98d728ae22 7137449123ef65cd b5c0fbcfec4d3b2f e9b5dba58189dbbc 3956c25bf348b538 ' +
+  '59f111f1b605d019 923f82a4af194f9b ab1c5ed5da6d8118 d807aa98a3030242 12835b0145706fbe 243185be4ee4b28c ' +
+  '550c7dc3d5ffb4e2 72be5d74f27b896f 80deb1fe3b1696b1 9bdc06a725c71235 c19bf174cf692694 e49b69c19ef14ad2 ' +
+  'efbe4786384f25e3 0fc19dc68b8cd5b5 240ca1cc77ac9c65 2de92c6f592b0275 4a7484aa6ea6e483 5cb0a9dcbd41fbd4 ' +
+  '76f988da831153b5 983e5152ee66dfab a831c66d2db43210 b00327c898fb213f bf597fc7beef0ee4 c6e00bf33da88fc2 ' +
+  'd5a79147930aa725 06ca6351e003826f 142929670a0e6e70 27b70a8546d22ffc 2e1b21385c26c926 4d2c6dfc5ac42aed ' +
+  '53380d139d95b3df 650a73548baf63de 766a0abb3c77b2a8 81c2c92e47edaee6 92722c851482353b a2bfe8a14cf10364 ' +
+  'a81a664bbc423001 c24b8b70d0f89791 c76c51a30654be30 d192e819d6ef5218 d69906245565a910 f40e35855771202a ' +
+  '106aa07032bbd1b8 19a4c116b8d2d0c8 1e376c085141ab53 2748774cdf8eeb99 34b0bcb5e19b48a8 391c0cb3c5c95a63 ' +
+  '4ed8aa4ae3418acb 5b9cca4f7763e373 682e6ff3d6b2b8a3 748f82ee5defb2fc 78a5636f43172f60 84c87814a1f0ab72 ' +
+  '8cc702081a6439ec 90befffa23631e28 a4506cebde82bde9 bef9a3f7b2c67915 c67178f2e372532b ca273eceea26619c ' +
+  'd186b8c721c0c207 eada7dd6cde0eb1e f57d4f7fee6ed178 06f067aa72176fba 0a637dc5a2c898a6 113f9804bef90dae ' +
+  '1b710b35131c471b 28db77f523047d84 32caab7b40c72493 3c9ebe0a15c9bebc 431d67c49c100d4c 4cc5d4becb3e42b6 ' +
+  '597f299cfc657e2a 5fcb6fab3ad6faec 6c44198c4a475817').split(' ').map(bigFromHex);
+const SHA512_IV = ('6a09e667f3bcc908 bb67ae8584caa73b 3c6ef372fe94f82b a54ff53a5f1d36f1 510e527fade682d1 ' +
+  '9b05688c2b3e6c1f 1f83d9abfb41bd6b 5be0cd19137e2179').split(' ').map(bigFromHex);
+const SHA384_IV = ('cbbb9d5dc1059ed8 629a292a367cd507 9159015a3070dd17 152fecd8f70e5939 67332667ffc00b31 ' +
+  '8eb44a8768581511 db0c2e0d64f98fa7 47b5481dbefa4fa4').split(' ').map(bigFromHex);
+class Sha512Core extends Chunked {
+  constructor(iv, outWords){
+    super(128);
+    this.h = iv.slice();
+    this.outWords = outWords;
+    this.w = new Array(80);
+  }
+  _block(){
+    const w = this.w, b = this.buf;
+    for (let i = 0; i < 16; i++){
+      const j = i << 3;
+      let v = 0n;
+      for (let k = 0; k < 8; k++) v = (v << 8n) | BigInt(b[j + k]);
+      w[i] = v;
+    }
+    for (let i = 16; i < 80; i++){
+      const x = w[i - 15], y = w[i - 2];
+      const s0 = rotr64(x, 1n) ^ rotr64(x, 8n) ^ (x >> 7n);
+      const s1 = rotr64(y, 19n) ^ rotr64(y, 61n) ^ (y >> 6n);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) & MASK64;
+    }
+    const h = this.h;
+    let a = h[0], bb = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+    for (let i = 0; i < 80; i++){
+      const S1 = rotr64(e, 14n) ^ rotr64(e, 18n) ^ rotr64(e, 41n);
+      const ch = (e & f) ^ ((~e & MASK64) & g);
+      const t1 = (hh + S1 + ch + SHA512_K[i] + w[i]) & MASK64;
+      const S0 = rotr64(a, 28n) ^ rotr64(a, 34n) ^ rotr64(a, 39n);
+      const maj = (a & bb) ^ (a & c) ^ (bb & c);
+      const t2 = (S0 + maj) & MASK64;
+      hh = g; g = f; f = e; e = (d + t1) & MASK64; d = c; c = bb; bb = a; a = (t1 + t2) & MASK64;
+    }
+    h[0] = (h[0] + a) & MASK64; h[1] = (h[1] + bb) & MASK64;
+    h[2] = (h[2] + c) & MASK64; h[3] = (h[3] + d) & MASK64;
+    h[4] = (h[4] + e) & MASK64; h[5] = (h[5] + f) & MASK64;
+    h[6] = (h[6] + g) & MASK64; h[7] = (h[7] + hh) & MASK64;
+  }
+  digestHex(){
+    mdPad(this, 16, false);
+    let s = '';
+    for (let i = 0; i < this.outWords; i++) s += bigToHex64(this.h[i]);
+    return s;
+  }
+}
+class Sha512 extends Sha512Core { constructor(){ super(SHA512_IV, 8); } }
+class Sha384 extends Sha512Core { constructor(){ super(SHA384_IV, 6); } }
+
+/* --- SHA3-256 (Keccak) --- */
+const KECCAK_RC = ('0000000000000001 0000000000008082 800000000000808a 8000000080008000 000000000000808b ' +
+  '0000000080000001 8000000080008081 8000000000008009 000000000000008a 0000000000000088 0000000080008009 ' +
+  '000000008000000a 000000008000808b 800000000000008b 8000000000008089 8000000000008003 8000000000008002 ' +
+  '8000000000000080 000000000000800a 800000008000000a 8000000080008081 8000000000008080 0000000080000001 ' +
+  '8000000080008008').split(' ').map(bigFromHex);
+const KECCAK_ROT = [0,1,62,28,27,36,44,6,55,20,3,10,43,25,39,41,45,15,21,8,18,2,61,56,14];
+function keccakF(a){
+  const C = new Array(5), B = new Array(25);
+  for (let round = 0; round < 24; round++){
+    for (let x = 0; x < 5; x++) C[x] = a[x] ^ a[x + 5] ^ a[x + 10] ^ a[x + 15] ^ a[x + 20];
+    for (let x = 0; x < 5; x++){
+      const d = C[(x + 4) % 5] ^ rotl64(C[(x + 1) % 5], 1n);
+      for (let y = 0; y < 5; y++) a[x + 5 * y] ^= d;
+    }
+    for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++)
+      B[y + 5 * ((2 * x + 3 * y) % 5)] = rotl64(a[x + 5 * y], BigInt(KECCAK_ROT[x + 5 * y]));
+    for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++)
+      a[x + 5 * y] = B[x + 5 * y] ^ ((~B[(x + 1) % 5 + 5 * y] & MASK64) & B[(x + 2) % 5 + 5 * y]);
+    a[0] ^= KECCAK_RC[round];
+  }
+}
+class Sha3_256 extends Chunked {
+  constructor(){
+    super(136);                       // rate = 136 字节
+    this.st = new Array(25).fill(0n);
+  }
+  _block(){
+    const st = this.st, b = this.buf;
+    for (let i = 0; i < 17; i++){
+      const j = i << 3;
+      let v = 0n;
+      for (let k = 7; k >= 0; k--) v = (v << 8n) | BigInt(b[j + k]);   // little-endian lane
+      st[i] ^= v;
+    }
+    keccakF(st);
+  }
+  digestHex(){
+    const padLen = this.blockSize - this.bufLen;      // >= 1
+    const pad = new Uint8Array(padLen);
+    pad[0] = 0x06;                                    // SHA-3 域分隔 + pad10*1 首字节
+    pad[padLen - 1] |= 0x80;
+    this.update(pad);
+    let s = '';
+    for (let i = 0; i < 4; i++){                      // 挤出 32 字节
+      let v = this.st[i];
+      for (let k = 0; k < 8; k++){ s += HEX_BYTE[Number(v & 0xffn)]; v >>= 8n; }
+    }
+    return s;
+  }
+}
+
+/* --- BLAKE2b-512 --- */
+const BLAKE2B_IV = SHA512_IV.slice();
+const BLAKE2B_SIGMA = [
+  [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+  [14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3],
+  [11,8,12,0,5,2,15,13,10,14,3,6,7,1,9,4],
+  [7,9,3,1,13,12,11,14,2,6,5,10,4,0,15,8],
+  [9,0,5,7,2,4,10,15,14,1,11,12,6,8,3,13],
+  [2,12,6,10,0,11,8,3,4,13,7,5,15,14,1,9],
+  [12,5,1,15,14,13,4,10,0,7,6,3,9,2,8,11],
+  [13,11,7,14,12,1,3,9,5,0,15,4,8,6,2,10],
+  [6,15,14,9,11,3,0,8,12,2,13,7,1,4,10,5],
+  [10,2,8,4,7,6,1,5,15,11,9,14,3,12,13,0]
+];
+class Blake2b {
+  constructor(outBytes){
+    this.outBytes = outBytes || 64;
+    this.blockSize = 128;
+    this.buf = new Uint8Array(128);
+    this.bufLen = 0;
+    this.t = 0n;
+    this.h = BLAKE2B_IV.slice();
+    this.h[0] ^= 0x01010000n ^ BigInt(this.outBytes);
+    this.len = 0;
+  }
+  update(data){
+    if (!(data instanceof Uint8Array)) data = new Uint8Array(data);
+    this.len += data.length;
+    let off = 0;
+    while (off < data.length){
+      if (this.bufLen === 128){          // 保留最后一块，等确认非末尾再压缩
+        this.t += 128n;                  // t = 已参与压缩的字节数（含当前块）
+        this._compress(false);
+        this.bufLen = 0;
+      }
+      const take = Math.min(128 - this.bufLen, data.length - off);
+      this.buf.set(data.subarray(off, off + take), this.bufLen);
+      this.bufLen += take;
+      off += take;
+    }
+    return this;
+  }
+  _compress(last){
+    const v = new Array(16);
+    for (let i = 0; i < 8; i++){ v[i] = this.h[i]; v[i + 8] = BLAKE2B_IV[i]; }
+    v[12] ^= this.t & MASK64;
+    v[13] ^= (this.t >> 64n) & MASK64;
+    if (last) v[14] ^= MASK64;
+    const m = new Array(16);
+    for (let i = 0; i < 16; i++){
+      const j = i << 3;
+      let w = 0n;
+      for (let k = 0; k < 8; k++) w |= BigInt(this.buf[j + k]) << BigInt(k * 8);
+      m[i] = w;
+    }
+    for (let r = 0; r < 12; r++){
+      const s = BLAKE2B_SIGMA[r % 10];
+      blake2G(v, 0, 4, 8, 12, m[s[0]], m[s[1]]);
+      blake2G(v, 1, 5, 9, 13, m[s[2]], m[s[3]]);
+      blake2G(v, 2, 6, 10, 14, m[s[4]], m[s[5]]);
+      blake2G(v, 3, 7, 11, 15, m[s[6]], m[s[7]]);
+      blake2G(v, 0, 5, 10, 15, m[s[8]], m[s[9]]);
+      blake2G(v, 1, 6, 11, 12, m[s[10]], m[s[11]]);
+      blake2G(v, 2, 7, 8, 13, m[s[12]], m[s[13]]);
+      blake2G(v, 3, 4, 9, 14, m[s[14]], m[s[15]]);
+    }
+    for (let i = 0; i < 8; i++) this.h[i] = (this.h[i] ^ v[i] ^ v[i + 8]) & MASK64;
+  }
+  digestHex(){
+    this.t += BigInt(this.bufLen);
+    if (this.bufLen < 128) for (let i = this.bufLen; i < 128; i++) this.buf[i] = 0;
+    this._compress(true);
+    let s = '';
+    for (let i = 0; i < this.outBytes; i++){
+      s += HEX_BYTE[Number(this.h[i >> 3] >> BigInt((i & 7) * 8) & 0xffn)];
+    }
+    return s;
+  }
+}
+function blake2G(v, a, b, c, d, x, y){
+  v[a] = (v[a] + v[b] + x) & MASK64;
+  v[d] = rotr64(v[d] ^ v[a], 32n);
+  v[c] = (v[c] + v[d]) & MASK64;
+  v[b] = rotr64(v[b] ^ v[c], 24n);
+  v[a] = (v[a] + v[b] + y) & MASK64;
+  v[d] = rotr64(v[d] ^ v[a], 16n);
+  v[c] = (v[c] + v[d]) & MASK64;
+  v[b] = rotr64(v[b] ^ v[c], 63n);
+}
+
+/* --- CRC32 (IEEE 802.3, 反射多项式 0xEDB88320) --- */
+const CRC32_TABLE = (function(){
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++){
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+class Crc32 {
+  constructor(){ this.c = 0xffffffff; this.len = 0; }
+  update(data){
+    if (!(data instanceof Uint8Array)) data = new Uint8Array(data);
+    this.len += data.length;
+    let c = this.c;
+    for (let i = 0; i < data.length; i++) c = CRC32_TABLE[(c ^ data[i]) & 255] ^ (c >>> 8);
+    this.c = c;
+    return this;
+  }
+  digestHex(){
+    const v = (this.c ^ 0xffffffff) >>> 0;
+    return HEX_BYTE[(v >>> 24) & 255] + HEX_BYTE[(v >>> 16) & 255] + HEX_BYTE[(v >>> 8) & 255] + HEX_BYTE[v & 255];
+  }
+}
+
+/* --- 算法注册表 --- */
+const ALGORITHMS = {
+  md5:      { label: 'MD5',         hexLen: 32,  native: null,      sums: 'MD5SUMS' },
+  sha1:     { label: 'SHA-1',       hexLen: 40,  native: 'SHA-1',   sums: 'SHA1SUMS' },
+  sha224:   { label: 'SHA-224',     hexLen: 56,  native: null,      sums: 'SHA224SUMS' },
+  sha256:   { label: 'SHA-256',     hexLen: 64,  native: 'SHA-256', sums: 'SHA256SUMS' },
+  sha384:   { label: 'SHA-384',     hexLen: 96,  native: 'SHA-384', sums: 'SHA384SUMS' },
+  sha512:   { label: 'SHA-512',     hexLen: 128, native: 'SHA-512', sums: 'SHA512SUMS' },
+  sha3_256: { label: 'SHA3-256',    hexLen: 64,  native: null,      sums: 'SHA3SUMS' },
+  blake2b:  { label: 'BLAKE2b-512', hexLen: 128, native: null,      sums: 'BLAKE2SUMS' },
+  crc32:    { label: 'CRC32',       hexLen: 8,   native: null,      sums: 'CRC32SUMS' }
+};
+const ALGO_ORDER = ['md5','sha1','sha224','sha256','sha384','sha512','sha3_256','blake2b','crc32'];
+const ALGO_COMMON = ['md5','sha1','sha256','sha512'];
+/* 长度 -> 候选算法（清单未写明算法时按长度识别） */
+const LEN2ALGOS = (function(){
+  const m = {};
+  for (const k of ALGO_ORDER){
+    const L = ALGORITHMS[k].hexLen;
+    (m[L] = m[L] || []).push(k);
+  }
+  return m;
+})();
+/* 算法名别名 -> 标准 key（BSD / certutil / openssl 格式用） */
+const ALGO_ALIASES = (function(){
+  const m = {};
+  const put = (name, key) => { m[name.toLowerCase().replace(/[^a-z0-9]/g, '')] = key; };
+  put('MD5', 'md5'); put('MD-5', 'md5');
+  put('SHA1', 'sha1'); put('SHA-1', 'sha1');
+  put('SHA224', 'sha224'); put('SHA-224', 'sha224');
+  put('SHA256', 'sha256'); put('SHA-256', 'sha256'); put('SHA2-256', 'sha256');
+  put('SHA384', 'sha384'); put('SHA-384', 'sha384'); put('SHA2-384', 'sha384');
+  put('SHA512', 'sha512'); put('SHA-512', 'sha512'); put('SHA2-512', 'sha512');
+  put('SHA3-256', 'sha3_256'); put('SHA3_256', 'sha3_256'); put('SHA3256', 'sha3_256'); put('SHA3', 'sha3_256');
+  put('BLAKE2B', 'blake2b'); put('BLAKE2B-512', 'blake2b'); put('BLAKE2B512', 'blake2b'); put('BLAKE2', 'blake2b');
+  put('CRC32', 'crc32'); put('CRC-32', 'crc32');
+  return m;
+})();
+function algoByLabelName(name){
+  if (!name) return null;
+  return ALGO_ALIASES[String(name).toLowerCase().replace(/[^a-z0-9]/g, '')] || null;
+}
+function createHasher(algo){
+  switch (algo){
+    case 'md5': return new Md5();
+    case 'sha1': return new Sha1();
+    case 'sha224': return new Sha224();
+    case 'sha256': return new Sha256();
+    case 'sha384': return new Sha384();
+    case 'sha512': return new Sha512();
+    case 'sha3_256': return new Sha3_256();
+    case 'blake2b': return new Blake2b(64);
+    case 'crc32': return new Crc32();
+  }
+  throw new Error('unknown algorithm: ' + algo);
+}
+/* 小数据一次性计算（测试与单值校验用） */
+function hashBytes(algo, bytes){
+  const h = createHasher(algo);
+  h.update(bytes);
+  return h.digestHex();
+}
+
+/* --- 文件名工具 --- */
+function normName(s){
+  return String(s == null ? '' : s).replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/+$/, '').toLowerCase();
+}
+function baseName(s){
+  const t = String(s == null ? '' : s).replace(/\\/g, '/');
+  const i = t.lastIndexOf('/');
+  return i >= 0 ? t.slice(i + 1) : t;
+}
+
+/* --- 校验清单解析（多算法） --- */
+function parseChecksumText(text){
+  const entries = [];
+  const unparsed = [];
+  const generic = [];
+  const byPath = new Map();
+  const byBase = new Map();
+  const addTo = (map, key, e) => {
+    if (!key) return;
+    if (!map.has(key)) map.set(key, []);
+    const arr = map.get(key);
+    if (arr.indexOf(e) < 0) arr.push(e);
+  };
+  const push = (name, hash, algo, raw) => {
+    const e = { name: name || '', hash: hash.toLowerCase(), algo: algo || null, hexLen: hash.length, raw: raw, used: false };
+    entries.push(e);
+    if (name){ addTo(byPath, normName(name), e); addTo(byBase, normName(baseName(name)), e); }
+    else generic.push(e);
+    return e;
+  };
+  const lines = String(text == null ? '' : text).replace(/^\uFEFF/, '').split(/\r?\n/);
+  let pending = null;   // certutil: "MD5 hash of file X:" 的下一行是哈希
+  for (const raw of lines){
+    const line = raw.trim();
+    if (!line || line.charAt(0) === '#' || line.charAt(0) === ';'){ if (line) unparsed.push(line); continue; }
+    const hexOnly = line.match(/^([0-9a-fA-F]+)$/);
+    if (hexOnly && LEN2ALGOS[hexOnly[1].length]){
+      if (pending && (!pending.algo || ALGORITHMS[pending.algo].hexLen === hexOnly[1].length)){
+        push(pending.name, hexOnly[1], pending.algo, line);
+        pending = null;
+        continue;
+      }
+      push('', hexOnly[1], null, line);
+      continue;
+    }
+    // BSD / OpenSSL：SHA256 (name) = hash
+    let m = line.match(/^([A-Za-z0-9_\-]{2,15})\s*\(\s*(.+?)\s*\)\s*=\s*([0-9a-fA-F]{8,128})$/);
+    if (m && algoByLabelName(m[1]) && LEN2ALGOS[m[3].length]){
+      push(m[2], m[3], algoByLabelName(m[1]), line);
+      pending = null;
+      continue;
+    }
+    // certutil：MD5 hash of file X:
+    m = line.match(/^(MD5|SHA1|SHA-1|SHA256|SHA-256|SHA384|SHA-384|SHA512|SHA-512|SHA3-?256|BLAKE2B)\s+hash\s+of\s+(?:file\s+)?(.*?):?\s*$/i);
+    if (m){
+      pending = { algo: algoByLabelName(m[1]), name: m[2].replace(/:$/, '').trim() };
+      continue;
+    }
+    // GNU：hash  name   /   hash *name
+    m = line.match(/^([0-9a-fA-F]{8,128})[\s:*]+(.+)$/);
+    if (m && LEN2ALGOS[m[1].length]){
+      push(m[2].trim(), m[1], null, line);
+      pending = null;
+      continue;
+    }
+    // 反序：name  hash   /   name: hash
+    m = line.match(/^(.+?)[\s:*]+([0-9a-fA-F]{8,128})$/);
+    if (m && LEN2ALGOS[m[2].length]){
+      push(m[1].trim(), m[2], null, line);
+      pending = null;
+      continue;
+    }
+    pending = null;
+    unparsed.push(line);
+  }
+  return { entries: entries, unparsed: unparsed, generic: generic, byPath: byPath, byBase: byBase };
+}
+/* 某算法下、针对某文件名的期望哈希值列表 */
+function expectedHashes(sums, fileName, algo){
+  if (!sums) return [];
+  const want = ALGORITHMS[algo].hexLen;
+  const out = [];
+  const cands = (sums.byPath.get(normName(fileName)) || []).concat(
+                sums.byBase.get(normName(baseName(fileName))) || [],
+                sums.generic);
+  for (const e of cands){
+    if (e.hexLen !== want) continue;
+    if (e.algo && e.algo !== algo) continue;
+    if (out.indexOf(e.hash) < 0) out.push(e.hash);
+  }
+  return out;
+}
+/* ===== HASH CORE END ===== */
+</script>
+
+<script>
+(function(){
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const NATIVE_LIMIT = 512 * 1024 * 1024;   // 超过此大小自动改用流式
+  const CHUNK = 8 * 1024 * 1024;
+
+  const state = { targets: [], sums: null, mode: 'auto', seq: 0, running: false, algos: ['sha256'] };
+  let toastTimer = null;
+
+  function toast(msg){
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+  function fmtSize(n){
+    if (n == null) return '';
+    const u = ['B','KB','MB','GB','TB'];
+    let i = 0, v = n;
+    while (v >= 1024 && i < u.length - 1){ v /= 1024; i++; }
+    return (i === 0 ? v : v.toFixed(v < 10 ? 2 : 1)) + ' ' + u[i];
+  }
+  function fmtTime(s){ return s < 1 ? Math.round(s * 1000) + ' ms' : s.toFixed(2) + ' s'; }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+  function yield0(){ return new Promise((r) => setTimeout(r, 0)); }
+  function looksLikeSumsName(name){
+    return /^(md5|sha1|sha224|sha256|sha384|sha512|sha3|sha3256|blake2|blake2b|crc32)?sums?(\.txt)?$/i.test(name) ||
+           /(sums?|checksums?|hashes?|digest)[^/]*\.(txt|md5|sha1|sha256|sha384|sha512|sha3|sum)$/i.test(name) ||
+           /\.(md5|sha1|sha256|sha384|sha512|sha3-?256|sums?)$/i.test(name);
+  }
+  function supportsNative(){
+    return !!(globalThis.crypto && globalThis.crypto.subtle && globalThis.crypto.subtle.digest &&
+              typeof File !== 'undefined' && File.prototype.arrayBuffer);
+  }
+  const selectedAlgos = () => state.algos.filter((a) => ALGORITHMS[a]);
+  const pendingAlgos = (t) => selectedAlgos().filter((a) => !(t.hashes && t.hashes[a]));
+
+  /* ---------- 计算引擎 ---------- */
+  async function jsPass(source, algos, p0, p1, onProgress){
+    const hashers = algos.map((a) => ({ algo: a, h: createHasher(a) }));
+    const step = (frac) => onProgress(p0 + (p1 - p0) * Math.max(0, Math.min(1, frac)));
+    if (source.buffer){
+      const bytes = source.buffer;
+      if (!bytes.length){ step(1); }
+      for (let off = 0; off < bytes.length; off += CHUNK){
+        const end = Math.min(off + CHUNK, bytes.length);
+        const chunk = bytes.subarray(off, end);
+        for (const it of hashers) it.h.update(chunk);
+        step(end / bytes.length);
+        await yield0();
+      }
+    } else {
+      const file = source.file;
+      let off = 0;
+      step(0);
+      while (off < file.size){
+        const end = Math.min(off + CHUNK, file.size);
+        const ab = await file.slice(off, end).arrayBuffer();
+        const chunk = new Uint8Array(ab);
+        for (const it of hashers) it.h.update(chunk);
+        off = end;
+        step(file.size ? off / file.size : 1);
+        await yield0();
+      }
+      step(1);
+    }
+    const out = {};
+    for (const it of hashers) out[it.algo] = it.h.digestHex();
+    return out;
+  }
+  async function computeFile(file, algos, onProgress){
+    const result = {};
+    // 原生只支持 SHA-1/256/384/512；其余算法一律用内置 JS 引擎
+    const nativeList = algos.filter((a) => ALGORITHMS[a].native);
+    const jsList = algos.filter((a) => !ALGORITHMS[a].native);
+    const useNative = nativeList.length > 0 && supportsNative() && state.mode !== 'stream' && file.size <= NATIVE_LIMIT;
+    if (useNative){
+      onProgress(0.02);
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      onProgress(nativeList.length ? 0.06 : 0.5);
+      for (let i = 0; i < nativeList.length; i++){
+        const a = nativeList[i];
+        const d = await globalThis.crypto.subtle.digest(ALGORITHMS[a].native, buf);
+        result[a] = bytesToHex(new Uint8Array(d));
+        onProgress(0.06 + 0.44 * (i + 1) / nativeList.length);
+      }
+      if (jsList.length){
+        Object.assign(result, await jsPass({ buffer: bytes }, jsList, 0.5, 1, onProgress));
+      }
+      onProgress(1);
+      return result;
+    }
+    return await jsPass({ file: file }, algos, 0, 1, onProgress);
+  }
+
+  /* ---------- 目标文件 ---------- */
+  function addTargets(files){
+    let added = 0, routed = 0;
+    for (const f of Array.prototype.slice.call(files || [])){
+      if (!f) continue;
+      if (looksLikeSumsName(f.name) && !/\.(exe|zip|iso|7z|rar|msi|dmg|apk|tar|gz)$/i.test(f.name)){
+        loadSumsFile(f); routed++; continue;
+      }
+      if (state.targets.some((t) => t.file === f)) continue;
+      state.targets.push({ id: ++state.seq, file: f, hashes: {}, status: 'pending', progress: 0, error: null, elapsed: 0 });
+      added++;
+    }
+    if (routed) toast('已把 ' + routed + ' 个校验清单文件放入第 2 步');
+    renderTargets(); renderResults(); processQueue();
+  }
+  function clearTargets(){ state.targets = []; renderTargets(); renderResults(); }
+  function rerunAll(){
+    for (const t of state.targets){ t.hashes = {}; t.status = 'pending'; t.error = null; t.progress = 0; t.elapsed = 0; }
+    renderTargets(); renderResults(); processQueue();
+  }
+  function needsWork(t){
+    if (t.status === 'error') return false;
+    return t.status === 'pending' || pendingAlgos(t).length > 0;
+  }
+  async function processQueue(){
+    if (state.running) return;
+    if (!selectedAlgos().length){ renderResults(); return; }
+    state.running = true;
+    for (;;){
+      const t = state.targets.find(needsWork);
+      if (!t) break;
+      const todo = pendingAlgos(t);
+      if (!todo.length){ t.status = 'done'; continue; }
+      t.status = 'hashing'; t.progress = 0; t.error = null;
+      renderTargets();
+      const t0 = performance.now();
+      try {
+        const got = await computeFile(t.file, todo, (p) => {
+          t.progress = p;
+          const bar = document.querySelector('[data-bar="' + t.id + '"] > i');
+          if (bar) bar.style.width = (p * 100).toFixed(1) + '%';
+          const pc = document.querySelector('[data-pct="' + t.id + '"]');
+          if (pc) pc.textContent = (p * 100).toFixed(0) + '%';
+        });
+        t.hashes = t.hashes || {};
+        for (const k in got) t.hashes[k] = got[k];
+        t.status = 'done';
+        t.progress = 1;
+      } catch (e){
+        t.status = 'error';
+        t.error = String((e && (e.message || e.name)) || e);
+      }
+      t.elapsed = (performance.now() - t0) / 1000;
+      renderTargets(); renderResults();
+    }
+    state.running = false;
+    renderResults();
+  }
+
+  /* ---------- 渲染 ---------- */
+  function renderAlgoBox(){
+    const box = $('algoBox');
+    box.innerHTML = '';
+    for (const k of ALGO_ORDER){
+      const on = state.algos.indexOf(k) >= 0;
+      const label = document.createElement('label');
+      label.className = 'pill' + (on ? ' on' : '');
+      label.innerHTML = '<input type="checkbox" value="' + k + '"' + (on ? ' checked' : '') + '>' + esc(ALGORITHMS[k].label);
+      box.appendChild(label);
+    }
+  }
+  function renderTargets(){
+    const ul = $('targetList');
+    ul.innerHTML = '';
+    $('clearTarget').disabled = state.targets.length === 0;
+    $('runBtn').disabled = state.targets.length === 0;
+    for (const t of state.targets){
+      const li = document.createElement('li');
+      const pct = (t.progress * 100).toFixed(0);
+      const doneCount = selectedAlgos().filter((a) => t.hashes && t.hashes[a]).length;
+      let right;
+      if (t.status === 'hashing') right = '<span class="fsize">计算中 <span data-pct="' + t.id + '">' + pct + '%</span></span>';
+      else if (t.status === 'error') right = '<span class="fsize" style="color:var(--bad)">读取失败</span>';
+      else right = '<span class="fsize">' + fmtSize(t.file.size) +
+        (t.status === 'done' ? ' · ' + fmtTime(t.elapsed) + (doneCount > 1 ? ' · ' + doneCount + ' 种算法' : '') : ' · 等待') + '</span>';
+      const bar = t.status === 'hashing' ? '<div class="bar" data-bar="' + t.id + '"><i style="width:' + pct + '%"></i></div>' : '';
+      const err = t.error ? '<div class="small" style="color:var(--bad);margin-top:6px">' + esc(t.error) + '</div>' : '';
+      li.innerHTML = '<div class="frow"><span class="fname">' + esc(t.file.name) + '</span>' + right + '</div>' + bar + err;
+      ul.appendChild(li);
+    }
+  }
+  function algoLines(values, opts){
+    const algos = selectedAlgos();
+    if (!algos.length) return '<span class="muted small">未选择算法</span>';
+    let html = '';
+    for (const a of algos){
+      const v = values[a];
+      let body;
+      if (v === undefined || v === null){
+        body = opts && opts.expected ? '<span class="muted small">—</span>' : '<span class="muted small">计算中…</span>';
+      } else if (opts && opts.expected){
+        const exp = opts.expected[a] || [];
+        if (!exp.length) body = '<span class="muted small">— 未找到</span>';
+        else {
+          const hit = exp.indexOf(v) >= 0;
+          body = '<span class="mark ' + (hit ? 'ok' : 'bad') + '">' + (hit ? '✓' : '✗') + '</span> ' +
+                 '<span class="hash">' + esc(v) + '</span>' +
+                 (hit ? '' : ' <span class="small muted">期望 ' + exp.map(esc).join(' / ') + '</span>');
+        }
+      } else {
+        body = '<span class="hash">' + esc(v) + '</span> <button class="btn mini" data-copy="' + esc(v) + '">复制</button>';
+      }
+      html += '<div class="algline"><span class="algtag">' + esc(ALGORITHMS[a].label) + '</span><span>' + body + '</span></div>';
+    }
+    return html;
+  }
+  function expectedMapFor(t){
+    const map = {};
+    for (const a of selectedAlgos()) map[a] = expectedHashes(state.sums, t.file.name, a).map((h) => h);
+    return map;
+  }
+  function markUsedEntries(){
+    if (!state.sums) return;
+    for (const e of state.sums.entries){
+      if (!e.name){ e.used = state.targets.length > 0; continue; }
+      const en = normName(e.name), eb = normName(baseName(e.name));
+      e.used = state.targets.some((t) => normName(t.file.name) === en || normName(baseName(t.file.name)) === eb);
+    }
+  }
+  function statusOf(t){
+    if (t.status === 'error') return 'error';
+    if (t.status !== 'done') return 'pending';
+    if (!state.sums) return 'none';
+    let ok = 0, bad = 0, none = 0;
+    for (const a of selectedAlgos()){
+      const v = t.hashes[a];
+      if (v === undefined) continue;
+      const exp = expectedHashes(state.sums, t.file.name, a);
+      if (!exp.length){ none++; continue; }
+      if (exp.indexOf(v) >= 0) ok++; else bad++;
+    }
+    if (bad) return 'bad';
+    if (ok && none) return 'partial';
+    if (ok) return 'ok';
+    return 'none';
+  }
+  const BADGES = {
+    ok: '<span class="badge ok">✓ 校验通过</span>',
+    partial: '<span class="badge warn">部分通过</span>',
+    bad: '<span class="badge bad">✗ 不匹配</span>',
+    none: '<span class="badge unknown">未找到记录</span>',
+    error: '<span class="badge bad">计算失败</span>',
+    pending: '<span class="badge pending">等待中</span>'
+  };
+  function renderResults(){
+    const body = $('resultBody');
+    const onlyBad = $('onlyBad').checked;
+    markUsedEntries();
+    body.innerHTML = '';
+    if (!selectedAlgos().length){
+      body.innerHTML = '<tr><td colspan="4" class="muted small">请在第 1 步至少选择一种哈希算法。</td></tr>';
+    } else if (state.targets.length === 0){
+      body.innerHTML = '<tr><td colspan="4" class="muted small">添加文件后自动开始计算。</td></tr>';
+    }
+    let ok = 0, partial = 0, bad = 0, none = 0, errored = 0;
+    for (const t of state.targets){
+      const st = statusOf(t);
+      if (st === 'ok') ok++; else if (st === 'partial') partial++;
+      else if (st === 'bad') bad++; else if (st === 'none') none++; else if (st === 'error') errored++;
+      if (onlyBad && st === 'ok') continue;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><div style="font-weight:600;word-break:break-all">' + esc(t.file.name) + '</div>' +
+        '<div class="small muted">' + fmtSize(t.file.size) + (t.status === 'done' ? ' · ' + fmtTime(t.elapsed) : '') + '</div></td>' +
+        '<td>' + algoLines(t.hashes || {}, null) + '</td>' +
+        '<td>' + algoLines(t.hashes || {}, { expected: expectedMapFor(t) }) + '</td>' +
+        '<td>' + (BADGES[st] || '') + '</td>';
+      body.appendChild(tr);
+    }
+    if (onlyBad && !body.children.length && state.targets.length){
+      body.innerHTML = '<tr><td colspan="4" class="muted small">没有异常项 🎉</td></tr>';
+    }
+    // 汇总
+    const chips = [];
+    chips.push('<span class="chip">文件 <b>' + state.targets.length + '</b></span>');
+    chips.push('<span class="chip">算法 <b>' + selectedAlgos().length + '</b></span>');
+    if (state.sums && selectedAlgos().length){
+      chips.push('<span class="chip ' + (ok ? 'ok' : '') + '">通过 <b>' + ok + '</b></span>');
+      if (partial) chips.push('<span class="chip warn">部分通过 <b>' + partial + '</b></span>');
+      chips.push('<span class="chip ' + (bad ? 'bad' : '') + '">不匹配 <b>' + bad + '</b></span>');
+      chips.push('<span class="chip ' + (none ? 'warn' : '') + '">未找到记录 <b>' + none + '</b></span>');
+    }
+    if (errored) chips.push('<span class="chip bad">失败 <b>' + errored + '</b></span>');
+    if (!state.targets.length) chips.push('<span class="chip muted">等待计算…</span>');
+    else if (state.targets.some((t) => t.status === 'pending' || t.status === 'hashing')) chips.push('<span class="chip muted">计算中…</span>');
+    else if (state.sums && !bad && !none && ok) chips.push('<span class="chip ok">全部校验通过</span>');
+    $('chips').innerHTML = chips.join('');
+
+    const hasHash = state.targets.some((t) => t.hashes && Object.keys(t.hashes).length);
+    $('copyAll').disabled = !hasHash;
+    $('dlReport').disabled = !hasHash;
+    $('dlSums').disabled = !hasHash;
+    renderExportAlgo();
+
+    let extra = '';
+    if (state.sums){
+      const unused = state.sums.entries.filter((e) => !e.used);
+      if (unused.length) extra = '清单中有 ' + unused.length + ' 条记录未对应到已选文件：' +
+        unused.slice(0, 6).map((e) => (e.name ? e.name : '(仅哈希值)')).join('、') + (unused.length > 6 ? ' …' : '');
+      const genNote = state.sums.generic.length ? '（含 ' + state.sums.generic.length + ' 个无文件名的哈希值）' : '';
+      const byAlgo = {};
+      for (const e of state.sums.entries){
+        const keys = e.algo ? [e.algo] : (LEN2ALGOS[e.hexLen] || ['未知']);
+        for (const k of keys) byAlgo[k] = (byAlgo[k] || 0) + 1;
+      }
+      const summary = Object.keys(byAlgo).map((k) => (ALGORITHMS[k] ? ALGORITHMS[k].label : k) + '×' + byAlgo[k]).join('，');
+      $('sumsStatus').textContent = '已载入 ' + state.sums.entries.length + ' 条记录' + genNote +
+        (summary ? '：' + summary : '') +
+        (state.sums.unparsed.length ? '；' + state.sums.unparsed.length + ' 行无法识别' : '') + '。';
+    }
+    $('unmatched').textContent = extra;
+  }
+  function renderExportAlgo(){
+    const sel = $('exportAlgo');
+    const prev = sel.value;
+    const list = selectedAlgos();
+    sel.innerHTML = list.map((a) => '<option value="' + a + '">' + esc(ALGORITHMS[a].sums) + '</option>').join('') ||
+      '<option value="">—</option>';
+    if (list.indexOf(prev) >= 0) sel.value = prev;
+  }
+
+  /* ---------- 清单载入 ---------- */
+  function loadSumsText(text){
+    const parsed = parseChecksumText(text);
+    if (!parsed.entries.length){
+      state.sums = null;
+      $('sumsStatus').textContent = '未从内容中识别出任何哈希记录，请检查格式或编码。';
+      renderResults();
+      return false;
+    }
+    state.sums = parsed;
+    $('clearSums').disabled = false;
+    renderResults();
+    return true;
+  }
+  function loadSumsFile(file){
+    const enc = $('encSel').value;
+    const fr = new FileReader();
+    fr.onload = () => {
+      let text;
+      try { text = new TextDecoder(enc).decode(new Uint8Array(fr.result)); }
+      catch (e){ text = new TextDecoder('utf-8').decode(new Uint8Array(fr.result)); }
+      $('sumsText').value = text.length > 200000 ? text.slice(0, 200000) : text;
+      if (loadSumsText(text)) toast('已载入校验清单：' + file.name);
+    };
+    fr.onerror = () => toast('读取清单文件失败');
+    fr.readAsArrayBuffer(file);
+  }
+  function clearSums(){
+    state.sums = null;
+    $('sumsText').value = '';
+    $('clearSums').disabled = true;
+    $('sumsStatus').textContent = '尚未载入校验清单 —— 此时只计算并显示哈希值。';
+    $('unmatched').textContent = '';
+    renderResults();
+  }
+
+  /* ---------- 导出 ---------- */
+  function download(name, text, withBom){
+    const blob = new Blob([(withBom ? '\uFEFF' : '') + text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  function stamp(){
+    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+  function currentAlgo(){ return $('exportAlgo').value || selectedAlgos()[0]; }
+  function buildSumsFor(algo){
+    const out = [];
+    for (const t of state.targets) if (t.hashes && t.hashes[algo]) out.push(t.hashes[algo] + '  ' + t.file.name);
+    return out.join('\r\n') + (out.length ? '\r\n' : '');
+  }
+  function buildReport(){
+    const algos = selectedAlgos();
+    const lines = [];
+    let ok = 0, partial = 0, bad = 0, none = 0, err = 0;
+    for (const t of state.targets){
+      const st = statusOf(t);
+      if (st === 'ok') ok++; else if (st === 'partial') partial++;
+      else if (st === 'bad') bad++; else if (st === 'none') none++; else if (st === 'error') err++;
+    }
+    lines.push('哈希校验报告');
+    lines.push('生成时间: ' + new Date().toLocaleString());
+    lines.push('算法: ' + algos.map((a) => ALGORITHMS[a].label).join(', '));
+    lines.push('文件数: ' + state.targets.length + '   通过: ' + ok + '   部分通过: ' + partial +
+               '   不匹配: ' + bad + '   未找到记录: ' + none + (err ? '   失败: ' + err : ''));
+    lines.push(''.padEnd(72, '-'));
+    for (const t of state.targets){
+      const st = statusOf(t);
+      const tag = { ok: '[通过]  ', partial: '[部分]  ', bad: '[不匹配]', none: '[无记录]', error: '[失败]  ', pending: '[等待]  ' }[st];
+      lines.push(tag + ' ' + t.file.name + '  (' + fmtSize(t.file.size) + ')');
+      for (const a of algos){
+        const v = t.hashes ? t.hashes[a] : null;
+        const exp = state.sums ? expectedHashes(state.sums, t.file.name, a) : [];
+        let mark = '  ';
+        if (v && exp.length) mark = exp.indexOf(v) >= 0 ? 'OK' : 'NG';
+        lines.push('          ' + ALGORITHMS[a].label.padEnd(11) + (v || '(未计算)') +
+                   (exp.length ? '   期望: ' + exp.join(' | ') + '  [' + (mark === 'OK' ? '一致' : mark === 'NG' ? '不一致' : '-') + ']' : ''));
+      }
+      if (t.error) lines.push('          错误: ' + t.error);
+    }
+    return lines.join('\r\n') + '\r\n';
+  }
+  function copyText(text, msg){
+    const done = () => toast(msg || '已复制到剪贴板');
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else fallback();
+    function fallback(){
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e){ toast('复制失败，请手动选择文本'); }
+      ta.remove();
+    }
+  }
+
+  /* ---------- 事件 ---------- */
+  function bindDrop(zone, input){
+    zone.addEventListener('click', () => input.click());
+    ['dragenter', 'dragover'].forEach((ev) => zone.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation(); zone.classList.add('over');
+    }));
+    ['dragleave', 'dragend'].forEach((ev) => zone.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation(); zone.classList.remove('over');
+    }));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.remove('over');
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      if (zone === $('targetDrop')) addTargets(files);
+      else loadSumsFile(files[0]);
+    });
+  }
+  bindDrop($('targetDrop'), $('targetInput'));
+  bindDrop($('sumsDrop'), $('sumsInput'));
+  ['dragenter', 'dragover', 'drop'].forEach((ev) => window.addEventListener(ev, (e) => {
+    if (e.target === document.body || e.target === document.documentElement) e.preventDefault();
+  }));
+
+  $('algoBox').addEventListener('change', (e) => {
+    const cb = e.target;
+    if (!cb || cb.type !== 'checkbox') return;
+    const k = cb.value;
+    if (cb.checked){ if (state.algos.indexOf(k) < 0) state.algos.push(k); }
+    else state.algos = state.algos.filter((a) => a !== k);
+    state.algos = ALGO_ORDER.filter((a) => state.algos.indexOf(a) >= 0);
+    renderAlgoBox();
+    if (!state.algos.length) toast('请至少选择一种算法');
+    for (const t of state.targets) if (t.status === 'done' && pendingAlgos(t).length) t.status = 'pending';
+    renderTargets(); renderResults(); processQueue();
+  });
+  $('algoCommon').addEventListener('click', () => {
+    state.algos = ALGO_COMMON.slice();
+    renderAlgoBox(); for (const t of state.targets) t.status = needsWork(t) ? 'pending' : t.status;
+    renderTargets(); renderResults(); processQueue();
+  });
+  $('algoAll').addEventListener('click', () => {
+    state.algos = ALGO_ORDER.slice();
+    renderAlgoBox(); for (const t of state.targets) t.status = needsWork(t) ? 'pending' : t.status;
+    renderTargets(); renderResults(); processQueue();
+  });
+  $('pickTarget').addEventListener('click', (e) => { e.stopPropagation(); $('targetInput').click(); });
+  $('targetInput').addEventListener('change', (e) => { addTargets(e.target.files); e.target.value = ''; });
+  $('pickSums').addEventListener('click', (e) => { e.stopPropagation(); $('sumsInput').click(); });
+  $('sumsInput').addEventListener('change', (e) => { if (e.target.files[0]) loadSumsFile(e.target.files[0]); e.target.value = ''; });
+  $('clearTarget').addEventListener('click', clearTargets);
+  $('clearSums').addEventListener('click', clearSums);
+  $('runBtn').addEventListener('click', rerunAll);
+  $('modeSel').addEventListener('change', (e) => { state.mode = e.target.value; });
+  $('onlyBad').addEventListener('change', renderResults);
+  $('exportAlgo').addEventListener('change', renderResults);
+  $('copyAll').addEventListener('click', () => {
+    const a = currentAlgo();
+    if (!a) return;
+    copyText(buildSumsFor(a), '已复制 ' + ALGORITHMS[a].label + ' 校验和');
+  });
+  $('dlSums').addEventListener('click', () => {
+    const a = currentAlgo();
+    if (!a) return;
+    download(ALGORITHMS[a].sums + '-' + stamp() + '.txt', buildSumsFor(a), false);
+  });
+  $('dlReport').addEventListener('click', () => download('hash-report-' + stamp() + '.txt', buildReport(), true));
+
+  let sumsTimer = null;
+  $('sumsText').addEventListener('input', (e) => {
+    clearTimeout(sumsTimer);
+    const v = e.target.value;
+    sumsTimer = setTimeout(() => {
+      if (!v.trim()){ clearSums(); return; }
+      state.sums = parseChecksumText(v);
+      $('clearSums').disabled = false;
+      renderResults();
+    }, 250);
+  });
+  $('encSel').addEventListener('change', () => toast('重新选择校验清单文件即可按新编码解析'));
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('[data-copy]');
+    if (btn) copyText(btn.getAttribute('data-copy'), '已复制哈希值');
+  });
+
+  renderAlgoBox();
+  renderExportAlgo();
+  renderResults();
+})();
+</script>
+</body>
+</html>
